@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const { Sequelize } = require('sequelize');
 const { Product, Category, Tag, ProductTag } = require('../../models');
 
 // The `/api/products` endpoint
@@ -7,17 +6,66 @@ const { Product, Category, Tag, ProductTag } = require('../../models');
 // get all products
 router.get('/', (req, res) => {
   // find all products
-  // be sure to include its associated Category and Tag data
+  try {
+    const products = await Product.findAll ({
+      include: [
+        { model: Category },
+        { model: Tag. through: ProductTag },
+      ],
+    });
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load products' });
+  }
 });
 
 // get one product
 router.get('/:id', (req, res) => {
   // find a single product by its `id`
-  // be sure to include its associated Category and Tag data
+  try {
+    const productId = req.params.id;
+    const product = await Product.findByPk(productId. {
+      include: [
+        { model: Category },
+        { model: Tag, through: ProductTag },
+      ],
+    });
+    if (!product) {
+      res.status(404).json({ error: 'Product not found' });
+      return;
+    }
+    res.json(product);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // create new product
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => { 
+  try {
+    const { product_name, price, stock, tagIds } = req.body;
+
+    const newProduct = await Product.create ({ product_name, price, stock });
+    
+    if (tagsIds && tagIds.length > 0) {
+      const tags = await Tag.findAll({ where: { id: tagIds } });
+      await newProduct.addTags(tags);
+    }
+    
+    const createdProduct = await Product.findByPk(newProduct.id, {
+      include: [
+        { model: Category },
+        { model: Tag, through: ProductTag },
+      ],
+    });
+
+    res.json(createdProduct);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
   /* req.body should look like this...
     {
       product_name: "Basketball",
